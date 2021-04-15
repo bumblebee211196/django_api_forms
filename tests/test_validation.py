@@ -1,7 +1,6 @@
 import datetime
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.test import RequestFactory, TestCase
 
 from tests.testapp.forms import AlbumForm
@@ -11,18 +10,18 @@ from tests.testapp.models import Album
 class ValidationTests(TestCase):
     def test_invalid(self):
         rf = RequestFactory()
-        expected = {
-            'songs': [
-                {
-                    'title': [
-                        ValidationError("This field is required.", code='required')
-                    ]
-                }
-            ],
-            '__all__': [
-                ValidationError("Sounds like a bullshit", code='time-travelling')
-            ],
-        }
+        expected = [
+            {
+                'code': 'required',
+                'path': ['songs', 0, 'title'],
+                'message': "This field is required."
+            },
+            {
+                'code': "time-travelling",
+                'path': "$body",
+                'message': "Sounds like a bullshit 💩."
+            }
+        ]
 
         with open(f"{settings.BASE_DIR}/data/invalid.json") as f:
             request = rf.post('/foo/bar', data=f.read(), content_type='application/json')
@@ -30,7 +29,7 @@ class ValidationTests(TestCase):
         form = AlbumForm.create_from_request(request)
 
         self.assertFalse(form.is_valid())
-        self.assertEqual(form.legacy_errors.__repr__(), expected.__repr__())
+        self.assertEqual(expected.__repr__(), form.errors.__repr__())
 
     def test_valid(self):
         rf = RequestFactory()

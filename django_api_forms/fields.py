@@ -9,7 +9,6 @@ from django.core.files import File
 from django.forms import Field
 from django.utils.translation import gettext_lazy as _
 
-from .exceptions import RequestValidationError
 from .forms import PositionalValidationError
 
 
@@ -94,7 +93,7 @@ class FormField(Field, IgnoreFillMixin):
         if form.is_valid():
             return form.cleaned_data
         else:
-            raise RequestValidationError(form.errors)
+            raise ValidationError(form.errors)
 
 
 class FormFieldList(FormField, IgnoreFillMixin):
@@ -120,7 +119,7 @@ class FormFieldList(FormField, IgnoreFillMixin):
                 errors.append((index, form.errors))
 
         if errors:
-            raise RequestValidationError(errors)
+            raise ValidationError(errors)
 
         return result
 

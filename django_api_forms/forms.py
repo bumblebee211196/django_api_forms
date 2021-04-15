@@ -97,21 +97,41 @@ class BaseForm(object):
             self.full_clean()
         return self._errors
 
-    @property
-    def legacy_errors(self) -> dict:
-        if self._legacy_errors is None:
-            self.full_clean()
-        return self._legacy_errors
-
     def is_valid(self) -> bool:
         return not self.errors
 
-    def add_error(self, field: Union[str, None], error: Union[ValidationError, RequestValidationError]):
-        if isinstance(error, RequestValidationError):
-            self._errors[field] = error.errors
-            self._legacy_errors[field] = [(i[1] if isinstance(i, tuple) else i) for i in error.errors]
-            return
+    def _add_error_records(self, error, path_prefix: List = None):
+        if path_prefix is None:
+            path_prefix = []
 
+        if isinstance(error, ValidationError):
+            if hasattr(error, 'error_list'):
+                for item in error.error_list:
+                    if item != error:
+                        self._add_error_records(item, path_prefix)
+            if hasattr(error, 'error_dict') and error.error_dict:
+                self._add_error_records(error.error_dict, path_prefix)
+            else:
+                item = {
+                    "path": path_prefix,
+                    '$type': 'error',
+                    'message': error.message,
+                    'code': error.code,
+                }
+                self._errors.append(item)
+        elif isinstance(error, tuple):
+            tmp = path_prefix + [error[0]]
+            self._add_error_records(error[1], tmp)
+        elif isinstance(error, list):
+            for record in error:
+                self._add_error_records(record, path_prefix)
+        elif isinstance(error, dict):
+            error['path'] += path_prefix
+            self._errors.append(error)
+        else:
+            print("WTF")
+
+    def add_error(self, field: Union[str, None], error: ValidationError):
         if hasattr(error, 'error_dict'):
             if field is not None:
                 raise TypeError(
@@ -127,10 +147,7 @@ class BaseForm(object):
             if field not in self.errors:
                 if field != NON_FIELD_ERRORS and field not in self.fields:
                     raise ValueError("'%s' has no field named '%s'." % (self.__class__.__name__, field))
-                self._errors[field] = []
-                self._legacy_errors[field] = []
-            self._errors[field].extend(error_list)
-            self._legacy_errors[field].extend(error_list)
+            self._add_error_records(error_list, [field])
             if field in self.cleaned_data:
                 del self.cleaned_data[field]
 
@@ -138,8 +155,7 @@ class BaseForm(object):
         """
         Clean all of self.data and populate self._errors and self.cleaned_data.
         """
-        self._errors = {}
-        self._legacy_errors = {}
+        self._errors = []
         self.cleaned_data = {}
 
         for key, field in self.fields.items():
@@ -151,7 +167,7 @@ class BaseForm(object):
 
                     if hasattr(self, f"clean_{key}"):
                         self.cleaned_data[key] = getattr(self, f"clean_{key}")()
-            except (ValidationError, RequestValidationError) as e:
+            except ValidationError as e:
                 self.add_error(key, e)
             except (AttributeError, TypeError, ValueError):
                 self.add_error(key, ValidationError(_("Invalid value")))

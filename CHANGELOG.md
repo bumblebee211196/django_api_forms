@@ -1,8 +1,15 @@
 # Changelog
 
-## 0.18.0 : TBD
+## 1.0.0 : TBD
 
-- **Change**: Positional validation errors for lists (old-school errors are available under `legacy_errors` property)
+This release was inspired by [Problem Details for HTTP APIs - RFC7807](https://tools.ietf.org/html/rfc7807) and blog article
+[Structuring validation errors in REST APIs](https://medium.com/engineering-brainly/structuring-validation-errors-in-rest-apis-40c15fbb7bc3)
+ written by [@k3nn7](https://github.com/k3nn7).
+
+The main idea has been to simplify validation process on the client side by flattening errors output. To achieve such
+a goal, the whole validation process has been rewritten (and luckily to us, much simplified).
+
+- **Breaking change**: Positional validation errors for lists
 - **Tests**: `pytest` and `coverage` configuration moved to `pyproject.toml`
 
 ## 0.17.0 : 24.02.2021
